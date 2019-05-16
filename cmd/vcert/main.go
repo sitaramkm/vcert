@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -45,7 +44,6 @@ var (
 )
 
 func init() {
-	setupRegistrationFlags()
 	setupGenCsrCommandFlags()
 	setupEnrollCommandFlags()
 	setupRetrieveCommandFlags()
@@ -135,11 +133,6 @@ func main() {
 		logf("Successfully connected to %s", cfg.ConnectorType)
 	}
 
-	if co == commandRegister {
-		doRegister(connector, cf)
-		return
-	}
-
 	if co == commandRevoke {
 		doRevoke(connector, cf)
 		return
@@ -191,10 +184,7 @@ func main() {
 			}
 			logf("Successfully retrieved request for %s", cf.pickupID)
 
-			if cf.csrOption == "service" {
-				// pcc.PrivateKey should be already encrypted by endpoint
-				// so nothing to do here
-			} else {
+			if req.CsrOrigin == certificate.LocalGeneratedCSR {
 				// otherwise private key can be taken from *req
 				err := pcc.AddPrivateKey(req.PrivateKey, []byte(cf.keyPassword))
 				if err != nil {
@@ -362,10 +352,7 @@ func main() {
 			}
 			logf("Successfully retrieved request for %s", cf.pickupID)
 
-			if cf.csrOption == "service" {
-				// pcc.PrivateKey should be already encrypted by endpoint
-				// so nothing to do here
-			} else {
+			if req.CsrOrigin == certificate.LocalGeneratedCSR {
 				// otherwise private key can be taken from *req
 				err = pcc.AddPrivateKey(req.PrivateKey, []byte(cf.keyPassword))
 				if err != nil {
@@ -455,22 +442,4 @@ func doRevoke(connector endpoint.Connector, cf *commandFlags) {
 		logger.Panicf("Failed to revoke certificate: %s", err)
 	}
 	logf("Successfully created revocation request for %s", requestedFor)
-}
-
-func doRegister(connector endpoint.Connector, cf *commandFlags) {
-	if cf.email == "" {
-		input, err := getEmailForRegistration(bufio.NewWriter(os.Stdout), bufio.NewReader(os.Stdin))
-		if err != nil {
-			logger.Panicf("%s", err)
-		}
-		cf.email = input
-		if !isValidEmailAddress(cf.email) {
-			logger.Panicf("Email address validation failed.  Please use a valid email address")
-		}
-	}
-	err := connector.Register(cf.email)
-	if err != nil {
-		logger.Panicf("Failed to register: %s", err)
-	}
-	logf("Registration complete, please check your email for further instructions.")
 }
