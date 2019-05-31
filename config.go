@@ -39,47 +39,44 @@ type Config struct {
 	// ConnectionTrust  may contain a trusted CA or certificate of server if you use self-signed certificate.
 	ConnectionTrust string // *x509.CertPool
 	LogVerbose      bool
-	// ConfigFile is deprecated
-	ConfigFile string
-	// ConfigSection is deprecated
-	ConfigSection string
 }
 
 // LoadFromFile is deprecated. In the future will be rewrited.
-func (cfg *Config) LoadFromFile() error {
-	if cfg.ConfigSection == "" {
-		cfg.ConfigSection = ini.DEFAULT_SECTION
-	}
-	log.Printf("Loading configuration from %s section %s", cfg.ConfigFile, cfg.ConfigSection)
+func LoadConfigFromFile(path, section string) (cfg Config, err error) {
 
-	fname, err := expand(cfg.ConfigFile)
+	if section == "" {
+		section = ini.DEFAULT_SECTION
+	}
+	log.Printf("Loading configuration from %s section %s", path, section)
+
+	fname, err := expand(path)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %s", err)
+		return cfg, fmt.Errorf("failed to load config: %s", err)
 	}
 
 	iniFile, err := ini.Load(fname)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %s", err)
+		return cfg, fmt.Errorf("failed to load config: %s", err)
 	}
 
 	err = validateFile(iniFile)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %s", err)
+		return cfg, fmt.Errorf("failed to load config: %s", err)
 	}
 
 	ok := func() bool {
-		for _, section := range iniFile.Sections() {
-			if section.Name() == cfg.ConfigSection {
+		for _, s := range iniFile.Sections() {
+			if s.Name() == section {
 				return true
 			}
 		}
 		return false
 	}()
 	if !ok {
-		return fmt.Errorf("section %s has not been found in %s", cfg.ConfigSection, cfg.ConfigFile)
+		return cfg, fmt.Errorf("section %s has not been found in %s", section, path)
 	}
 
-	var m dict = iniFile.Section(cfg.ConfigSection).KeysHash()
+	var m dict = iniFile.Section(section).KeysHash()
 
 	var connectorType endpoint.ConnectorType
 	var baseUrl string
@@ -107,17 +104,17 @@ func (cfg *Config) LoadFromFile() error {
 	} else if m.has("test_mode") && m["test_mode"] == "true" {
 		connectorType = endpoint.ConnectorTypeFake
 	} else {
-		return fmt.Errorf("failed to load config: connector type cannot be defined")
+		return cfg, fmt.Errorf("failed to load config: connector type cannot be defined")
 	}
 
 	if m.has("trust_bundle") {
 		fname, err := expand(m["trust_bundle"])
 		if err != nil {
-			return fmt.Errorf("failed to load trust-bundle: %s", err)
+			return cfg, fmt.Errorf("failed to load trust-bundle: %s", err)
 		}
 		data, err := ioutil.ReadFile(fname)
 		if err != nil {
-			return fmt.Errorf("failed to load trust-bundle: %s", err)
+			return cfg, fmt.Errorf("failed to load trust-bundle: %s", err)
 		}
 		cfg.ConnectionTrust = string(data)
 	}
@@ -126,7 +123,7 @@ func (cfg *Config) LoadFromFile() error {
 	cfg.Credentials = auth
 	cfg.BaseUrl = baseUrl
 
-	return nil
+	return
 }
 
 func expand(path string) (string, error) {

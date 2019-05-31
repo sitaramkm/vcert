@@ -58,21 +58,19 @@ func (t ConnectorType) String() string {
 type Connector interface {
 	// GetType returns a connector type (cloud/TPP/fake). Can be useful because some features are not supported by a Cloud connection.
 	GetType() ConnectorType
-	// SetBaseUrl sets a server URL. It usually is called by the NewClient function.
-	SetBaseURL(url string) (err error)
 	// SetZone sets a zone (by name) for requests with this connector.
 	SetZone(z string)
 	Ping() (err error)
 	// Authenticate is usually called by NewClient and it is not required that you manually call it.
 	Authenticate(auth *Authentication) (err error)
 	// ReadPolicyConfiguration returns information about zone policies. It can be used for checking request compatibility with policies.
-	ReadPolicyConfiguration(zone string) (policy *Policy, err error)
+	ReadPolicyConfiguration() (policy *Policy, err error)
 	// ReadZoneConfiguration returns the zone configuration. A zone configuration includes zone policy and additional zone information.
-	ReadZoneConfiguration(zone string) (config *ZoneConfiguration, err error)
+	ReadZoneConfiguration() (config *ZoneConfiguration, err error)
 	// GenerateRequest update certificate.Request with data from zone configuration.
 	GenerateRequest(config *ZoneConfiguration, req *certificate.Request) (err error)
 	// RequestCertificate makes a request to the server with data for enrolling the certificate.
-	RequestCertificate(req *certificate.Request, zone string) (requestID string, err error)
+	RequestCertificate(req *certificate.Request) (requestID string, err error)
 	// RetrieveCertificate immediately returns an enrolled certificate. Otherwise, RetrieveCertificate waits and retries during req.Timeout.
 	RetrieveCertificate(req *certificate.Request) (certificates *certificate.PEMCollection, err error)
 	RevokeCertificate(req *certificate.RevocationRequest) error
